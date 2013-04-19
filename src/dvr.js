@@ -88,7 +88,7 @@ var LiveStreamRequest=function(channel) {
 					'0100000000000000cf112000000e0100' +
 					'02917c0400000048070e0100000e0190' +
 					'113501e4f012000000000028f3120000');
-	this.buffer[22]=1<<(channel-1);
+	this.buffer[38]=1<<(channel-1);
 };
 
 _.extend(LiveStreamRequest.prototype,Request.prototype);
