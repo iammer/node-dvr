@@ -2,15 +2,7 @@ var _=require('underscore');
 var stream=require('stream');
 var binary=require('binary');
 
-var SCAN_SIZE=1024;
-var SCAN_REMAINDER=6;
-var STAGE1_HEAD=16;
-
-var H264Stripper=function(inStream,options) {
-	stream.Stream.call(this,options);
-	this.readable=true;
-	this.writable=false;
-	
+var H264Stripper=function(inStream) {
 	this.inStream=inStream;
 	var self=this;
     
@@ -34,10 +26,11 @@ var H264Stripper=function(inStream,options) {
 			.tap(function(vars) {
 				vars['headerSize']+=8;
 				this
-				.buffer('junk','headerSize')
+				.buffer('header','headerSize')
 				.buffer('data','chunkSize')
 				.tap(function(vars) {
-					self.emit('data',vars['data']);
+					var junk=vars['junk'];
+					self.emit('chunk',junk.string('ascii',junk.length-1),vars['data']);
 				});
 			});
 		})
@@ -45,13 +38,72 @@ var H264Stripper=function(inStream,options) {
     
 };
 
-H264Stripper.prototype = Object.create(stream.Stream.prototype, { constructor: { value: H264Stripper }});
-
-
 H264Stripper.prototype.close=function() {
 	if (this.ender) this.ender();
 	this.inStream.destroy();
 }
+
+var H264RawStream=function(inStream) {
+	stream.Stream.call(this);
+	this.readable=true;
+	this.writable=false;
 	
+	this.h264Stripper=new H264Stripper(inStream);
+
+	this.on('end',_.bind(function() {
+		this.h264Stripper.close();
+	},this));
 	
-module.exports=H264Stripper;
+	this.h264Stripper.on('end',_.bind(function() {
+		this.emit('end');
+	},this));
+	
+	this.h264Stripper.on('chunk',_.bind(function(chunkType,data) {
+		this.emit('data',data);
+	},this));
+	
+};
+	
+H264RawStream.prototype = Object.create(stream.Stream.prototype, { constructor: { value: H264RawStream }});
+
+
+var H264FLVStream=function(inStream) {
+	stream.Stream.call(this);
+	this.readable=true;
+	this.writable=false;
+	
+	this.h264Stripper=new H264Stripper(inStream);
+
+	this.on('end',_.bind(function() {
+		this.h264Stripper.close();
+	},this));
+	
+	this.h264Stripper.on('end',_.bind(function() {
+		this.emit('end');
+	},this));
+	
+	this.h264Stripper.on('chunk',_.bind(function(chunkType,data) {
+		this.emit('data',data);
+	},this));
+	
+};
+
+	
+H264FLVStream.prototype = Object.create(stream.Stream.prototype, { constructor: { value: H264FLVStream }});
+
+/*_.extend(H264FLVStream.prototype,{
+	header: new Buffer([0x46,0x4c,0x56,0x01,0x01,0,0,0,0x09]),
+	writeString: function(s) {
+		var buf=new Buffer(s.length);
+		buf.write(s,2);
+		buf.writeUInt16BE(s.length,0);
+		this.emit('data',buf);
+	},
+	
+});*/
+
+module.exports={
+	H264Stripper: H264Stripper,
+	H264RawStream: H264RawStream,
+	H264FLVStream: H264FLVStream
+};
