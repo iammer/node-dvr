@@ -1,7 +1,7 @@
 var _=require('underscore');
 var net=require('net');
 
-var H264Stripper=require('./h264Stripper.js');
+var H264Stripper=require('./h264Stripper2.js');
 
 var REQUEST_SIZE=507;
 

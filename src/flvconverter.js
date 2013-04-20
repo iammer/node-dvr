@@ -22,7 +22,6 @@ module.exports.convertToFLV=function(h264Stream) {
 	h264Stream.pipe(ffmpeg.stdin);
 	
 	ffmpeg.stdout.close=function() {
-		h264Stream.unpipe();
 		if (h264Stream.close) h264Stream.close();
 		ffmpeg.kill();
 	};

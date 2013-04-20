@@ -14,13 +14,13 @@ app.use(express.cookieParser());
 app.use(express.bodyParser());
 app.use(express.session({secret: 'dvr secret',key: 'sid'}));
 app.use(express.static(__dirname+'/public_html'));
-app.use(function(req,resp,next) {
+/*app.use(function(req,resp,next) {
 	if (req.path=='/login' || req.session.isAuth==true) {
 		next();
 	} else {
 		resp.send(403,'Forbidden');
 	}
-});
+});*/
 
 app.post('/login',function(req,resp) {
 	var user=req.body.user;
@@ -56,7 +56,6 @@ app.get('/channel/:cid',function(req,resp) {
 	var flv=convertToFLV(dvr.getChannel(cid));
 	
 	resp.on('close',function() {
-		flv.unpipe();
 		resp.end();
 		if (flv.close) flv.close();
 	});
