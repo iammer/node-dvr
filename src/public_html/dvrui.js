@@ -35,16 +35,21 @@ $.extend(DVRUI.prototype,{
 			});
 		});
 		
-		var channelSelection=$('#channelSelection');
-		for(var i=1;i<=6;i++) {
-			var button=$('<input type="button"/>');
-			button.val(i);
-			button.on('click',function() {
-				$(self).trigger('channel',[$(this).val()]);
+		$('#playbackDate').on('change',function() {
+			self.getRecordingList($(this).val(),function(list) {
+				var playbackList=$('#playbackList');
+				playbackList.empty();
+				if (list) {
+					$.each(list,function(i,v) {
+						$('<div>')
+						.text(v.channel+':'+v.startTime+'-'+v.endTime)
+						.addClass('playbackItem')
+						.appendTo(playbackList);
+					});
+				}
+					
 			});
-			channelSelection.append(button);
-		}
-			
+		});
 	},
 	loginUser: function(user,pass,cb) {
 		var self=this;
@@ -63,10 +68,24 @@ $.extend(DVRUI.prototype,{
 		});
 	},
 	login: function() {
+		var self=this;
 		$('#loginForm').hide();
 		$('#afterLogin').show();
+		
+		var channelSelection=$('#channelSelection');
+		this.getChannelLabels(function(labels) {
+			if (labels) {
+				$.each(labels,function(k,v) {
+					var button=$('<input type="button"/>');
+					button.val(k);
+					button.on('click',function() {
+						$(self).trigger('channel',[v]);
+					});
+					channelSelection.append(button);
+				});
+			}
+		});
 
-		console.log('onLogin');
 	},
 	isLoggedIn: function(cb) {
 		$.ajax('/loginCheck',{
@@ -76,6 +95,36 @@ $.extend(DVRUI.prototype,{
 			},
 			success: function(data) {
 				cb(data.loggedIn);
+			}
+		});
+	},
+	getChannelLabels: function(cb) {
+		var self=this;
+		$.ajax('/video/labels', {
+			error: function() {
+				if (cb) cb(false);
+			},
+			success: function(data) {
+				self.dvrLabels=data;
+				if (cb) cb(data);
+			}
+		});
+	},
+	dateRE: /(\d{4})-(\d\d)-(\d\d)/,
+	getRecordingList: function(date,cb) {
+		console.log('getting recording list for ' + date);
+		var res=this.dateRE.exec(date);
+		$.ajax('/video/recordingList', {
+			data: {
+				year: res[1],
+				month: res[2],
+				day: res[3]
+			},
+			error: function() {
+				if (cb) cb(false);
+			},
+			success: function(data) {
+				if (cb) cb(data);
 			}
 		});
 	}

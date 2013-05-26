@@ -1,7 +1,8 @@
 var _=require('underscore');
 var net=require('net');
+var binary=require('binary');
 
-var H264Stripper=require('./h264Stripper2.js');
+var H264RawStream=require('./h264Stripper2.js').H264RawStream;
 
 var REQUEST_SIZE=507;
 
@@ -10,6 +11,14 @@ var DVR=function(options) {
 };
 
 _.extend(DVR.prototype,{
+	labels: {
+		'Front': 1,
+		'Garage': 2,
+		'Backyard Right': 3,
+		'Side': 4,
+		'Backyard Left': 5,
+		'Porch': 6
+	},
 	sendRequest: function(req) {
 		var sock=net.createConnection(this.options);
 		sock.on('connect',function() {
@@ -18,44 +27,64 @@ _.extend(DVR.prototype,{
 		
 		return sock;
 	},
-	getRecording: function (recordingName) {
+	getRecording: function (recordingName,progress) {
 		//return new H264Stripper(fs.createReadStream('test2.nvh'));
-		return new H264Stripper(this.sendRequest(new RecordingRequest(recordingName)));
+		return new H264RawStream(this.sendRequest(new RecordingRequest(recordingName)),progress);
 	},
 	getChannel: function(channel) {
-		return new H264Stripper(this.sendRequest(new LiveStreamRequest(channel)));
+		return new H264RawStream(this.sendRequest(new LiveStreamRequest(channel)));
 	},
 	getRecordingList: function(year,month,date,cb) {
 		var sock=this.sendRequest(new RecordingListRequest(year,month,date));
 		
 		var recordingList=[];
-		
-		sock.on('end',function() {
-			cb(recordingList);
-		});
 
-		var readHeader=false;
+		var self=this;
 		
-		sock.on('readable',_.bind(function() {
-			var buf;
-			if (readHeader || sock.read(8)) {
-				readHeader=true;
-				while(buf=sock.read(148)) {
-					recordingList.push(this.createRecordingItem(buf.toString('ascii',12,71)));
+		sock.pipe(binary()
+			.word32le('size')
+			.tap(function(vars) {
+				vars['size']/=148;
+			})
+			.loop(function(end,vars) {
+				this.buffer('head',4)
+					.buffer('junk',12)
+					.buffer('name',59)
+					.tap(function(vars) {
+						recordingList.push(self.createRecordingItem(vars['name'].toString('ascii')));
+					})
+					.buffer('junk',73);
+								
+				if (--vars['size']<0) {
+					end();
+					cb(recordingList);
 				}
-			}
-		},this));
+			})
+		);
+
 	},
-	recordingItemRE: /ch0{13}(\d)-(\d{6})-(\d{6})-(\d{6})/,
+	recordingItemRE: /ch0*(\d)-(\d{6})-(\d{6})-(\d{6})/,
 	createRecordingItem: function(name) {
+		//console.log('Creating recording item for ' + name);
 		var res=this.recordingItemRE.exec(name);
 		return {
 			name: name,
 			channel: res[1],
 			date: res[2],
-			startTime: res[3],
-			endTime: res[4]
+			startTimeStr: res[3],
+			startTime: this.convertTime(res[3]),
+			endTimeStr: res[4],
+			endTime: this.convertTime(res[4])
 		};
+	},
+	timeRE: /(\d\d)(\d\d)(\d\d)/,
+	convertTime: function(time) {
+		var res=this.timeRE.exec(time);
+		return {
+			hour: res[1],
+			minute: res[2],
+			second: res[3]
+		}
 	}
 });
 

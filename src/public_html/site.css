@@ -1,3 +1,8 @@
 .initiallyHidden {
 	display: none;
 }
+
+#player {
+	height: 240;
+	width: 352;
+}

@@ -1,55 +1,42 @@
+<!DOCTYPE html5>
 <html>
 <head>
 	<title>DVR Web</title>
 	
 	<link rel='stylesheet' type='text/css' href='site.css'/>
 	
-	<script type="text/javascript" src="/jwplayer/jwplayer.js"></script>
+	<!--<script type="text/javascript" src="/jwplayer/jwplayer.js"></script>-->
+	<script type="text/javascript" src="flowplayer/flowplayer-3.2.12.min.js"></script>
 	<script type="text/javascript" src="jquery-1.9.1.min.js"></script>
 	<script type="text/javascript" src="dvrui.js"></script>
 	<script type='text/javascript'>
-		/*$(function() {
-			jwplayer('player').setup({file: '/channel/1.flv',
-				height: 240,
-				width: 352,
-				controls: false});
-				
-			jwplayer().onReady(function() {
-				jwplayer().play();
-			});
-		});*/
-		
 		$(function() {
 			var ui=new DVRUI();
 			
 			$(ui).on('login',function() {
-				jwplayer('player').setup({
-					playlist: [
-						{sources: [{ file: '/channel/1', type: 'flv' }]},
-						{sources: [{ file: '/channel/2', type: 'flv' }]},
-						{sources: [{ file: '/channel/3', type: 'flv' }]},
-						{sources: [{ file: '/channel/4', type: 'flv' }]},
-						{sources: [{ file: '/channel/5', type: 'flv' }]},
-						{sources: [{ file: '/channel/6', type: 'flv' }]}
-					],
-					height: 240,
-					width: 352,
-					controls: false});
-					
-				jwplayer().onReady(function() {
-					jwplayer().play();
-				});
+				console.log('starting flowplayer');
+				flowplayer('player','/flowplayer/flowplayer-3.2.16.swf',{
+					buffering: false,
+					clip: {
+						bufferLength: 1,
+						live: true,
+						baseUrl: '/video/channel/'
+					},
+					playlist: ['1.flv', '2.flv', '3.flv', '4.flv',	'5.flv', '6.flv'],
+					plugins: {
+						controls: null
+					}
+				}).play();
 			});
 			
 			$(ui).on('logout',function() {
-				jwplayer().stop();
-				jwplayer().remove();
+				$f().stop().close();	
 			});
 			
 			$(ui).on('channel',function(e,cid) {
 				console.log('Playing channel ' + cid); 
-				jwplayer().playlistItem(cid-1);
-			});
+				$f().play(cid-1);
+			})
 
 		});
 	</script>
@@ -63,8 +50,17 @@
 		<div id='loginFailedMessage' class='initiallyHidden'>Login Failed!</div>
 	</div>
 	<div id='afterLogin' class='initiallyHidden'>
-		<div id='player'>Loading Player</div>
-		<div id='channelSelection'></div>
+		<div id='lightSection'></div>
+		<div id='playerSection'>
+			<div id='player'>Loading Player</div>
+			<div id='channelSelection'></div>
+		</div>
+		<div id='playbackSection'>
+			Select Date: <input type='date' id='playbackDate'>
+			<div id='playbackList'></div>
+		</div>
+			
+		</div>
 		<input type='button' id='logoutButton' value='Logout'/>
 	</div>
 </body>
